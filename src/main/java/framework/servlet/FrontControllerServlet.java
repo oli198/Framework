@@ -9,6 +9,7 @@ import jakarta.servlet.http.*;
 import jakarta.servlet.annotation.WebServlet;
 import java.io.*;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.util.*;
 
 @WebServlet("/*")
@@ -39,15 +40,15 @@ public class FrontControllerServlet extends HttpServlet {
                 if (method.isAnnotationPresent(Url.class)) {
                     Url urlAnnotation = method.getAnnotation(Url.class);
                     
-                    UrlMethod u = new UrlMethod();
-                    u.setUrl(urlAnnotation.value());
-                    u.setMethod(urlAnnotation.method());
+                    UrlMethod urlMethod = new UrlMethod();
+                    urlMethod.setUrl(urlAnnotation.value());
+                    urlMethod.setMethod(urlAnnotation.method());
                     
-                    if (routes.containsKey(u)) {
-                        throw new ServletException("Route déjà existante: " + u);
+                    if (routes.containsKey(urlMethod)) {
+                        throw new ServletException("Route déjà existante: " + urlMethod);
                     }
                     
-                    routes.put(u, new MethodRoute(instance, method));
+                    routes.put(urlMethod, new MethodRoute(instance, method));
                 }
             }
         }
@@ -77,12 +78,15 @@ public class FrontControllerServlet extends HttpServlet {
             cleanUrl = "/";
         }
 
-        UrlMethod currentUrlMethod = new UrlMethod();
-        currentUrlMethod.setUrl(cleanUrl);
-        currentUrlMethod.setMethod(httpMethod);
+        UrlMethod urlMethod = new UrlMethod();
+        urlMethod.setUrl(cleanUrl);
+        urlMethod.setMethod(httpMethod);
         
-        if (routes.containsKey(currentUrlMethod)) {
-            MethodRoute route = routes.get(currentUrlMethod);
+        if (routes.containsKey(urlMethod)) {
+            MethodRoute route = routes.get(urlMethod);
+            
+            printMethodInfo(route.method);
+            
             try {
                 route.method.invoke(route.instance, req, resp);
             } catch (Exception e) {
@@ -99,6 +103,20 @@ public class FrontControllerServlet extends HttpServlet {
             }
             out.println("</ul>");
         }
+    }
+
+    private void printMethodInfo(Method method) {
+        System.out.println("=== Méthode Appelée ===");
+        System.out.println("Nom: " + method.getName());
+        System.out.println("Classe: " + method.getDeclaringClass().getName());
+        System.out.println("Retour: " + method.getReturnType().getName());
+        System.out.println("Paramètres:");
+        
+        Parameter[] parameters = method.getParameters();
+        for (Parameter param : parameters) {
+            System.out.println("  - " + param.getType().getName() + " " + param.getName());
+        }
+        System.out.println("========================");
     }
 
     private static class MethodRoute {
