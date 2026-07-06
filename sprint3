@@ -1,9 +1,9 @@
 srpint3 
 tohin'ny sprint2
 
-Manao map<class<Url,get/post... +surdefinition'equals'
+ faire map<class<Url,get/post... +surdefinition'equals'
 @url("/test","GET"); Fomba fiantsoana anle izy any am dev
-ATAO AO ANATY UTILS ILAY UrlMethode
+Mettre l'Urlmethode dans util
 
 Urlmethod u1 = new Urlmethode();
 u1.setUrl("/test")
@@ -25,11 +25,11 @@ ao amin'ny TestCOntroller
 	//Grace au surdefinition equals ao amin'ny Urlmethode amle hoe objet vaovao Urlmethod u3 izay mitovy am u1
 	/:mi-Throws exception le izy satria efa tsy misy le u3 satria equals am u1 ihany
 
-Jereo aloha le telephone
+
 Manamboatra class UrlMethod
 Raha ohatra ka 
 
-
+Jereo aloha le telephone
 sprint3bis
 vaovao
 
