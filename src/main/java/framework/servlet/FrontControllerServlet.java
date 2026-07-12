@@ -1,5 +1,6 @@
 package framework.servlet;
 
+import framework.model.ModelAndView;
 import framework.util.UrlMethod;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
@@ -9,8 +10,16 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.*;
 
-@WebServlet("/*")
 public class FrontControllerServlet extends HttpServlet {
+    
+    private String viewPrefix;
+    private String viewSuffix;
+    
+    @Override
+    public void init() throws ServletException {
+        viewPrefix = getServletContext().getInitParameter("viewPrefix");
+        viewSuffix = getServletContext().getInitParameter("viewSuffix");
+    }
     
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
@@ -26,18 +35,17 @@ public class FrontControllerServlet extends HttpServlet {
 
     private void processRequest(HttpServletRequest req, HttpServletResponse resp, String httpMethod)
             throws ServletException, IOException {
-        resp.setContentType("text/html; charset=UTF-8");
-        PrintWriter out = resp.getWriter();
-        
-        Map<UrlMethod, Object[]> routes = (Map<UrlMethod, Object[]>) getServletContext().getAttribute("routes");
         
         String url = req.getRequestURI();
         String contextPath = req.getContextPath();
         String cleanUrl = url.replace(contextPath, "");
+        
         if (cleanUrl.isEmpty()) {
             cleanUrl = "/";
         }
 
+        Map<UrlMethod, Object[]> routes = (Map<UrlMethod, Object[]>) getServletContext().getAttribute("routes");
+        
         UrlMethod urlMethod = new UrlMethod();
         urlMethod.setUrl(cleanUrl);
         urlMethod.setMethod(httpMethod);
@@ -50,12 +58,29 @@ public class FrontControllerServlet extends HttpServlet {
             printMethodInfo(method);
             
             try {
-                method.invoke(instance, req, resp);
+                Object result = method.invoke(instance, req, resp);
+                
+                if (result instanceof ModelAndView) {
+                    ModelAndView mav = (ModelAndView) result;
+                    
+                    for (String key : mav.getModel().keySet()) {
+                        req.setAttribute(key, mav.getModel().get(key));
+                    }
+                    
+                    String viewPath = viewPrefix + mav.getUrl() + viewSuffix;
+                    RequestDispatcher dispatcher = getServletContext().getRequestDispatcher(viewPath);
+                    dispatcher.forward(req, resp);
+                }
             } catch (Exception e) {
+                resp.setContentType("text/html; charset=UTF-8");
+                PrintWriter out = resp.getWriter();
                 out.println("<h1>Erreur lors de l'exécution</h1>");
                 out.println("<p>" + e.getMessage() + "</p>");
+                e.printStackTrace(out);
             }
         } else {
+            resp.setContentType("text/html; charset=UTF-8");
+            PrintWriter out = resp.getWriter();
             out.println("<h1>URL non trouvée: " + cleanUrl + " [" + httpMethod + "]</h1>");
             out.println("<h2>Routes disponibles:</h2>");
             out.println("<ul>");
