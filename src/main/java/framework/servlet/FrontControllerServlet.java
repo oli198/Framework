@@ -1,8 +1,5 @@
 package framework.servlet;
 
-import framework.annotation.Controller;
-import framework.annotation.Url;
-import framework.util.ClassScanner;
 import framework.util.UrlMethod;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
@@ -14,46 +11,7 @@ import java.util.*;
 
 @WebServlet("/*")
 public class FrontControllerServlet extends HttpServlet {
-    private List<Class<?>> controllers = new ArrayList<>();
-    private Map<UrlMethod, MethodRoute> routes = new HashMap<>();
-
-    @Override
-    public void init() throws ServletException {
-        String packageName = getServletContext().getInitParameter("controllerPackage");
-        if (packageName == null || packageName.isEmpty()) {
-            throw new ServletException("Le paramètre 'controllerPackage' est manquant dans web.xml");
-        }
-        
-        try {
-            controllers = ClassScanner.getControllers(packageName);
-            scanRoutes();
-        } catch (Exception e) {
-            throw new ServletException("Erreur lors du scan des controllers", e);
-        }
-    }
-
-    private void scanRoutes() throws Exception {
-        for (Class<?> controllerClass : controllers) {
-            Object instance = controllerClass.getDeclaredConstructor().newInstance();
-            
-            for (Method method : controllerClass.getDeclaredMethods()) {
-                if (method.isAnnotationPresent(Url.class)) {
-                    Url urlAnnotation = method.getAnnotation(Url.class);
-                    
-                    UrlMethod urlMethod = new UrlMethod();
-                    urlMethod.setUrl(urlAnnotation.value());
-                    urlMethod.setMethod(urlAnnotation.method());
-                    
-                    if (routes.containsKey(urlMethod)) {
-                        throw new ServletException("Route déjà existante: " + urlMethod);
-                    }
-                    
-                    routes.put(urlMethod, new MethodRoute(instance, method));
-                }
-            }
-        }
-    }
-
+    
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
@@ -71,6 +29,8 @@ public class FrontControllerServlet extends HttpServlet {
         resp.setContentType("text/html; charset=UTF-8");
         PrintWriter out = resp.getWriter();
         
+        Map<UrlMethod, Object[]> routes = (Map<UrlMethod, Object[]>) getServletContext().getAttribute("routes");
+        
         String url = req.getRequestURI();
         String contextPath = req.getContextPath();
         String cleanUrl = url.replace(contextPath, "");
@@ -83,12 +43,14 @@ public class FrontControllerServlet extends HttpServlet {
         urlMethod.setMethod(httpMethod);
         
         if (routes.containsKey(urlMethod)) {
-            MethodRoute route = routes.get(urlMethod);
+            Object[] routeData = routes.get(urlMethod);
+            Object instance = routeData[0];
+            Method method = (Method) routeData[1];
             
-            printMethodInfo(route.method);
+            printMethodInfo(method);
             
             try {
-                route.method.invoke(route.instance, req, resp);
+                method.invoke(instance, req, resp);
             } catch (Exception e) {
                 out.println("<h1>Erreur lors de l'exécution</h1>");
                 out.println("<p>" + e.getMessage() + "</p>");
@@ -98,8 +60,9 @@ public class FrontControllerServlet extends HttpServlet {
             out.println("<h2>Routes disponibles:</h2>");
             out.println("<ul>");
             for (UrlMethod um : routes.keySet()) {
-                MethodRoute route = routes.get(um);
-                out.println("<li>" + um + " : " + route.method.getName() + "</li>");
+                Object[] routeData = routes.get(um);
+                Method method = (Method) routeData[1];
+                out.println("<li>" + um + " : " + method.getName() + "</li>");
             }
             out.println("</ul>");
         }
@@ -117,15 +80,5 @@ public class FrontControllerServlet extends HttpServlet {
             System.out.println("  - " + param.getType().getName() + " " + param.getName());
         }
         System.out.println("========================");
-    }
-
-    private static class MethodRoute {
-        Object instance;
-        Method method;
-
-        MethodRoute(Object instance, Method method) {
-            this.instance = instance;
-            this.method = method;
-        }
     }
 }

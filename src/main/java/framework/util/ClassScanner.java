@@ -35,16 +35,12 @@ public class ClassScanner {
         return classes;
     }
 
-    /**
-     * Vérifie si une classe possède l'annotation @Controller
-     */
+   
     public static boolean hasControllerAnnotation(Class<?> clazz) {
         return clazz.isAnnotationPresent(Controller.class);
     }
 
-    /**
-     * Retourne uniquement les classes annotées @Controller dans un package
-     */
+    
     public static List<Class<?>> getControllers(String packageName) throws Exception {
         List<Class<?>> controllers = new ArrayList<>();
 
